@@ -1,0 +1,13 @@
+lengths = np.arange(2, 21)
+error_fractions = []
+
+long_test_sequences = np.random.choice(alphabet, (100, lengths.max()))
+long_test_input = torch.from_numpy((long_test_sequences[..., np.newaxis] == alphabet).astype('float32'))
+
+with torch.no_grad():
+    for i in lengths:
+        output = alphabet[seq_encoder_decoder(long_test_input[:, :i]).detach().cpu().numpy().argmax(2)]
+        error_fraction = 1 - (output == long_test_sequences[:, :i]).mean()
+        error_fractions.append(error_fraction)
+
+plt.plot(lengths, error_fractions)

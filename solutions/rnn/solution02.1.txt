@@ -1,0 +1,45 @@
+class SeqDataset(torch.utils.data.Dataset):
+    def __init__(self, sequences, reverse=False):
+        self.sequences = sequences
+        self.reverse = reverse
+        
+        self.build()
+    
+    def build(self):
+        self.alphabet, self.isequences = np.unique(self.sequences, return_inverse=True)
+        self.isequences.shape = self.sequences.shape
+    
+    def __len__(self):
+        return len(self.sequences)
+    
+    def __getitem__(self, i):
+        seq = self.isequences[i]
+        one_hot = (seq[..., np.newaxis] == np.arange(len(self.alphabet))).astype('float32')
+        if self.reverse:
+            seq = seq[..., ::-1].copy()
+        return torch.from_numpy(one_hot), torch.from_numpy(seq)
+
+seq_dataset_rev = SeqDataset(sequences, reverse=True)
+
+data_rev = torch.utils.data.DataLoader(seq_dataset_rev, batch_size=32, shuffle=True)
+
+seq_encoder_decoder_rev = SeqEncoderDecoder(len(alphabet), 20)
+
+criterion = lambda x, y: torch.nn.CrossEntropyLoss()(x.permute(0, 2, 1), y)
+optimizer = torch.optim.Adam(seq_encoder_decoder_rev.parameters())
+
+all_losses = []
+for i in range(100):
+    losses = train_epoch(seq_encoder_decoder_rev, data_rev, criterion, optimizer)
+    all_losses.append(losses)
+
+test_output_rev = seq_encoder_decoder_rev(test_input).detach().cpu().numpy()
+
+test_output_rev_sequences = alphabet[test_output_rev.argmax(axis=2)]
+
+test_sequences[:3], test_output_rev_sequences[:3]
+
+plt.plot(np.concatenate(all_losses))
+
+
+(test_sequences == test_output_rev_sequences[..., ::-1]).mean()
